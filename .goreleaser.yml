@@ -24,7 +24,8 @@ builds:
 archives:
   - id: mdr
     format: tar.gz
-    name_template: "mdr_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    name_template: >-
+      mdr_{{ .Version }}_{{- if eq .Os "darwin" }}macOS{{- else }}{{ .Os }}{{- end }}_{{ .Arch }}
     format_overrides:
       - goos: windows
         format: zip
