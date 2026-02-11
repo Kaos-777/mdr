@@ -51,4 +51,26 @@ var viewCmd = &cobra.Command{
 func init() {
 	viewCmd.Flags().BoolVar(&viewRaw, "raw", false, "Print rendered output without TUI (useful for piping)")
 	rootCmd.AddCommand(viewCmd)
+
+	// Make `mdr <file>` work as shorthand for `mdr view <file>`
+	rootCmd.RunE = func(cmd *cobra.Command, args []string) error {
+		if len(args) == 1 {
+			info, err := os.Stat(args[0])
+			if err == nil && !info.IsDir() {
+				return viewCmd.RunE(viewCmd, args)
+			}
+		}
+		// Check stdin
+		stat, _ := os.Stdin.Stat()
+		if (stat.Mode() & os.ModeCharDevice) == 0 {
+			rendered, err := markdown.RenderFromReader(os.Stdin)
+			if err != nil {
+				return err
+			}
+			fmt.Print(rendered)
+			return nil
+		}
+		return cmd.Help()
+	}
+	rootCmd.Args = cobra.ArbitraryArgs
 }

@@ -94,13 +94,16 @@ var helpStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("241"))
 
 func (m Model) View() string {
-	if m.height == 0 {
+	if m.height <= 1 {
 		return m.content
 	}
 
 	end := m.offset + m.height - 1 // reserve 1 line for status
 	if end > len(m.lines) {
 		end = len(m.lines)
+	}
+	if m.offset > end {
+		m.offset = end
 	}
 
 	visible := m.lines[m.offset:end]

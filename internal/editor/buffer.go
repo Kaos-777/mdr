@@ -2,6 +2,7 @@ package editor
 
 import (
 	"strings"
+	"unicode/utf8"
 )
 
 type Buffer struct {
@@ -28,15 +29,24 @@ func (b *Buffer) GetLine(row int) string {
 	return b.lines[row]
 }
 
+// LineLen returns the rune count of the given line.
+func (b *Buffer) LineLen(row int) int {
+	if row < 0 || row >= len(b.lines) {
+		return 0
+	}
+	return utf8.RuneCountInString(b.lines[row])
+}
+
 func (b *Buffer) InsertChar(row, col int, ch rune) {
 	if row < 0 || row >= len(b.lines) {
 		return
 	}
-	line := b.lines[row]
-	if col > len(line) {
-		col = len(line)
+	runes := []rune(b.lines[row])
+	if col > len(runes) {
+		col = len(runes)
 	}
-	b.lines[row] = line[:col] + string(ch) + line[col:]
+	runes = append(runes[:col], append([]rune{ch}, runes[col:]...)...)
+	b.lines[row] = string(runes)
 	b.modified = true
 }
 
@@ -44,11 +54,12 @@ func (b *Buffer) DeleteChar(row, col int) {
 	if row < 0 || row >= len(b.lines) {
 		return
 	}
-	line := b.lines[row]
-	if col < 0 || col >= len(line) {
+	runes := []rune(b.lines[row])
+	if col < 0 || col >= len(runes) {
 		return
 	}
-	b.lines[row] = line[:col] + line[col+1:]
+	runes = append(runes[:col], runes[col+1:]...)
+	b.lines[row] = string(runes)
 	b.modified = true
 }
 
@@ -62,12 +73,12 @@ func (b *Buffer) InsertNewline(row, col int) {
 	if row < 0 || row >= len(b.lines) {
 		return
 	}
-	line := b.lines[row]
-	if col > len(line) {
-		col = len(line)
+	runes := []rune(b.lines[row])
+	if col > len(runes) {
+		col = len(runes)
 	}
-	before := line[:col]
-	after := line[col:]
+	before := string(runes[:col])
+	after := string(runes[col:])
 
 	newLines := make([]string, 0, len(b.lines)+1)
 	newLines = append(newLines, b.lines[:row]...)
@@ -77,12 +88,12 @@ func (b *Buffer) InsertNewline(row, col int) {
 	b.modified = true
 }
 
-// JoinLines joins line `row` with the line above it. Returns the column where the cursor should be.
+// JoinLines joins line `row` with the line above it. Returns the rune-based column where the cursor should be.
 func (b *Buffer) JoinLines(row int) int {
 	if row <= 0 || row >= len(b.lines) {
 		return 0
 	}
-	col := len(b.lines[row-1])
+	col := utf8.RuneCountInString(b.lines[row-1])
 	b.lines[row-1] += b.lines[row]
 
 	newLines := make([]string, 0, len(b.lines)-1)

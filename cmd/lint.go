@@ -44,8 +44,7 @@ var lintCmd = &cobra.Command{
 		}
 
 		if totalIssues > 0 {
-			fmt.Fprintf(os.Stderr, "Found %d issue(s)\n", totalIssues)
-			os.Exit(1)
+			return fmt.Errorf("found %d issue(s)", totalIssues)
 		}
 		return nil
 	},

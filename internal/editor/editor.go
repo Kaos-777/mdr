@@ -2,6 +2,7 @@ package editor
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"strings"
 
@@ -13,12 +14,14 @@ import (
 type Model struct {
 	buffer    *Buffer
 	filePath  string
+	fileMode  fs.FileMode
 	cursorRow int
 	cursorCol int
 	offsetRow int
 	width     int
 	height    int
 	editWidth int
+	showHelp  bool
 	err       error
 }
 
@@ -26,15 +29,22 @@ func NewModel(content string, filePath string) Model {
 	return Model{
 		buffer:   NewBuffer(content),
 		filePath: filePath,
+		fileMode: 0644,
 	}
 }
 
 func NewModelFromFile(path string) (Model, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return Model{}, err
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return Model{}, err
 	}
-	return NewModel(string(data), path), nil
+	m := NewModel(string(data), path)
+	m.fileMode = info.Mode().Perm()
+	return m, nil
 }
 
 func (m Model) Init() tea.Cmd {
@@ -58,6 +68,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.err = m.save()
 			return m, nil
 
+		case tea.KeyCtrlH:
+			m.showHelp = !m.showHelp
+			return m, nil
+
 		case tea.KeyUp:
 			if m.cursorRow > 0 {
 				m.cursorRow--
@@ -79,12 +93,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursorCol--
 			} else if m.cursorRow > 0 {
 				m.cursorRow--
-				m.cursorCol = len(m.buffer.GetLine(m.cursorRow))
+				m.cursorCol = m.buffer.LineLen(m.cursorRow)
 			}
 			return m, nil
 
 		case tea.KeyRight:
-			lineLen := len(m.buffer.GetLine(m.cursorRow))
+			lineLen := m.buffer.LineLen(m.cursorRow)
 			if m.cursorCol < lineLen {
 				m.cursorCol++
 			} else if m.cursorRow < m.buffer.LineCount()-1 {
@@ -98,7 +112,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case tea.KeyEnd:
-			m.cursorCol = len(m.buffer.GetLine(m.cursorRow))
+			m.cursorCol = m.buffer.LineLen(m.cursorRow)
 			return m, nil
 
 		case tea.KeyEnter:
@@ -120,7 +134,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case tea.KeyDelete:
-			lineLen := len(m.buffer.GetLine(m.cursorRow))
+			lineLen := m.buffer.LineLen(m.cursorRow)
 			if m.cursorCol < lineLen {
 				m.buffer.DeleteChar(m.cursorRow, m.cursorCol)
 			} else if m.cursorRow < m.buffer.LineCount()-1 {
@@ -145,7 +159,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) clampCol() {
-	lineLen := len(m.buffer.GetLine(m.cursorRow))
+	lineLen := m.buffer.LineLen(m.cursorRow)
 	if m.cursorCol > lineLen {
 		m.cursorCol = lineLen
 	}
@@ -153,6 +167,9 @@ func (m *Model) clampCol() {
 
 func (m *Model) scrollToCursor() {
 	editHeight := m.editableHeight()
+	if editHeight <= 0 {
+		return
+	}
 	if m.cursorRow < m.offsetRow {
 		m.offsetRow = m.cursorRow
 	}
@@ -162,11 +179,15 @@ func (m *Model) scrollToCursor() {
 }
 
 func (m Model) editableHeight() int {
-	return m.height - 2
+	h := m.height - 2
+	if h < 0 {
+		h = 0
+	}
+	return h
 }
 
 func (m Model) save() error {
-	return os.WriteFile(m.filePath, []byte(m.buffer.String()), 0644)
+	return os.WriteFile(m.filePath, []byte(m.buffer.String()), m.fileMode)
 }
 
 var (
@@ -184,6 +205,8 @@ var (
 			BorderLeft(true).
 			BorderStyle(lipgloss.NormalBorder()).
 			BorderForeground(lipgloss.Color("241"))
+	helpStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("241"))
 )
 
 func (m Model) View() string {
@@ -197,16 +220,33 @@ func (m Model) View() string {
 		editW = m.width / 2
 	}
 
+	if m.showHelp {
+		help := helpStyle.Render(strings.Join([]string{
+			"Editor Help",
+			"",
+			"  Arrow keys   Move cursor",
+			"  Home/End     Start/end of line",
+			"  Ctrl+S       Save file",
+			"  Ctrl+H       Toggle this help",
+			"  Ctrl+C       Quit",
+			"",
+			"  Press Ctrl+H to close",
+		}, "\n"))
+		return help
+	}
+
 	var editorLines []string
 	for i := m.offsetRow; i < m.offsetRow+editHeight && i < m.buffer.LineCount(); i++ {
 		lineNum := lineNumStyle.Render(fmt.Sprintf("%d", i+1))
 		line := m.buffer.GetLine(i)
 
 		if i == m.cursorRow {
-			displayLine := line
-			if m.cursorCol <= len(line) {
-				displayLine = line[:m.cursorCol] + "\u2588" + line[m.cursorCol:]
+			runes := []rune(line)
+			col := m.cursorCol
+			if col > len(runes) {
+				col = len(runes)
 			}
+			displayLine := string(runes[:col]) + "\u2588" + string(runes[col:])
 			editorLines = append(editorLines, lineNum+" "+cursorLineStyle.Render(truncate(displayLine, editW-6)))
 		} else {
 			editorLines = append(editorLines, lineNum+" "+truncate(line, editW-6))
@@ -238,7 +278,7 @@ func (m Model) View() string {
 	if m.buffer.Modified() {
 		modIndicator = " [+]"
 	}
-	status := statusStyle.Render(fmt.Sprintf(" %s%s  Ln %d, Col %d  Ctrl+S: save  Ctrl+C: quit",
+	status := statusStyle.Render(fmt.Sprintf(" %s%s  Ln %d, Col %d  Ctrl+S: save  Ctrl+H: help  Ctrl+C: quit",
 		m.filePath, modIndicator, m.cursorRow+1, m.cursorCol+1))
 
 	return body + "\n" + status
