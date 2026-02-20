@@ -114,11 +114,15 @@ func checkEmptyLinks(source []byte) []Issue {
 
 func extractText(n ast.Node, source []byte) string {
 	var buf bytes.Buffer
-	for child := n.FirstChild(); child != nil; child = child.NextSibling() {
+	ast.Walk(n, func(child ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
 		if t, ok := child.(*ast.Text); ok {
 			buf.Write(t.Segment.Value(source))
 		}
-	}
+		return ast.WalkContinue, nil
+	})
 	return buf.String()
 }
 

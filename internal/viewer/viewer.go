@@ -28,6 +28,23 @@ func (m Model) Init() tea.Cmd {
 	return nil
 }
 
+// visibleHeight returns the number of content lines visible (excluding the status bar).
+func (m Model) visibleHeight() int {
+	if m.height <= 1 {
+		return m.height
+	}
+	return m.height - 1
+}
+
+// maxOffset returns the maximum scroll offset so the last line is still visible.
+func (m Model) maxOffset() int {
+	max := len(m.lines) - m.visibleHeight()
+	if max < 0 {
+		return 0
+	}
+	return max
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -47,28 +64,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case msg.Type == tea.KeyDown || msg.String() == "j":
-			maxOffset := len(m.lines) - m.height
-			if maxOffset < 0 {
-				maxOffset = 0
-			}
-			if m.offset < maxOffset {
+			if m.offset < m.maxOffset() {
 				m.offset++
 			}
 			return m, nil
 
 		case msg.Type == tea.KeyPgDown || msg.String() == "d":
-			maxOffset := len(m.lines) - m.height
-			if maxOffset < 0 {
-				maxOffset = 0
-			}
-			m.offset += m.height / 2
-			if m.offset > maxOffset {
-				m.offset = maxOffset
+			m.offset += m.visibleHeight() / 2
+			if m.offset > m.maxOffset() {
+				m.offset = m.maxOffset()
 			}
 			return m, nil
 
 		case msg.Type == tea.KeyPgUp || msg.String() == "u":
-			m.offset -= m.height / 2
+			m.offset -= m.visibleHeight() / 2
 			if m.offset < 0 {
 				m.offset = 0
 			}
@@ -79,11 +88,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case msg.String() == "G":
-			maxOffset := len(m.lines) - m.height
-			if maxOffset < 0 {
-				maxOffset = 0
-			}
-			m.offset = maxOffset
+			m.offset = m.maxOffset()
 			return m, nil
 		}
 	}
@@ -98,7 +103,7 @@ func (m Model) View() string {
 		return m.content
 	}
 
-	end := m.offset + m.height - 1 // reserve 1 line for status
+	end := m.offset + m.visibleHeight()
 	if end > len(m.lines) {
 		end = len(m.lines)
 	}

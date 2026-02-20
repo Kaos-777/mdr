@@ -46,3 +46,19 @@ func TestEmptyLinks_NoIssue(t *testing.T) {
 		t.Fatalf("expected no issues, got %d", len(issues))
 	}
 }
+
+func TestDuplicateHeadings_WithFormattedText(t *testing.T) {
+	input := []byte("# Title with **bold** text\n\n# Title with **bold** text\n")
+	issues := checkDuplicateHeadings(input)
+	if len(issues) == 0 {
+		t.Fatal("expected duplicate heading issue for headings with bold text")
+	}
+}
+
+func TestDuplicateHeadings_DifferentText(t *testing.T) {
+	input := []byte("# Hello\n\n# World\n")
+	issues := checkDuplicateHeadings(input)
+	if len(issues) != 0 {
+		t.Fatalf("expected no issues, got %d", len(issues))
+	}
+}

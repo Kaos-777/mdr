@@ -1,6 +1,9 @@
 package editor
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -68,5 +71,54 @@ func TestEditorModel_EnterKey(t *testing.T) {
 	}
 	if model.cursorCol != 0 {
 		t.Fatalf("expected cursor at col 0, got %d", model.cursorCol)
+	}
+}
+
+func TestEditorModel_SaveResetsModified(t *testing.T) {
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "test.md")
+	os.WriteFile(path, []byte("hello"), 0644)
+
+	m, err := NewModelFromFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.width = 80
+	m.height = 24
+
+	// Type a character to set modified
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}})
+	model := updated.(Model)
+	if !model.buffer.Modified() {
+		t.Fatal("buffer should be modified after typing")
+	}
+
+	// Save
+	updated, _ = model.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	model = updated.(Model)
+	if model.buffer.Modified() {
+		t.Fatal("buffer should not be modified after save")
+	}
+	if model.saveMsg != "Saved!" {
+		t.Fatalf("expected save message 'Saved!', got %q", model.saveMsg)
+	}
+}
+
+func TestEditorModel_SaveError_DisplayedInView(t *testing.T) {
+	m := NewModel("hello", "/nonexistent/path/file.md")
+	m.width = 80
+	m.height = 24
+	m.editWidth = 40
+
+	// Trigger save
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	model := updated.(Model)
+	if model.err == nil {
+		t.Fatal("expected save error for invalid path")
+	}
+
+	view := model.View()
+	if !strings.Contains(view, "Error:") {
+		t.Fatal("expected error message in view output")
 	}
 }
