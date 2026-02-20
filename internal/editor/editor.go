@@ -12,17 +12,19 @@ import (
 )
 
 type Model struct {
-	buffer    *Buffer
-	filePath  string
-	fileMode  fs.FileMode
-	cursorRow int
-	cursorCol int
-	offsetRow int
-	width     int
-	height    int
-	editWidth int
-	showHelp  bool
-	err       error
+	buffer      *Buffer
+	filePath    string
+	fileMode    fs.FileMode
+	cursorRow   int
+	cursorCol   int
+	offsetRow   int
+	width       int
+	height      int
+	editWidth   int
+	showHelp    bool
+	confirmQuit bool
+	err         error
+	saveMsg     string
 }
 
 func NewModel(content string, filePath string) Model {
@@ -60,12 +62,41 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
+		// Handle quit confirmation dialog
+		if m.confirmQuit {
+			switch msg.String() {
+			case "y", "Y":
+				return m, tea.Quit
+			case "n", "N", "esc":
+				m.confirmQuit = false
+				return m, nil
+			default:
+				return m, nil
+			}
+		}
+
+		// Clear transient messages on any non-save keypress
+		if msg.Type != tea.KeyCtrlS {
+			m.err = nil
+			m.saveMsg = ""
+		}
+
 		switch msg.Type {
 		case tea.KeyCtrlC:
+			if m.buffer.Modified() {
+				m.confirmQuit = true
+				return m, nil
+			}
 			return m, tea.Quit
 
 		case tea.KeyCtrlS:
 			m.err = m.save()
+			if m.err == nil {
+				m.buffer.ResetModified()
+				m.saveMsg = "Saved!"
+			} else {
+				m.saveMsg = ""
+			}
 			return m, nil
 
 		case tea.KeyCtrlH:
@@ -205,8 +236,16 @@ var (
 			BorderLeft(true).
 			BorderStyle(lipgloss.NormalBorder()).
 			BorderForeground(lipgloss.Color("241"))
-	helpStyle = lipgloss.NewStyle().
+	editorHelpStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("241"))
+	errStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("9")).
+			Bold(true)
+	savedStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("10"))
+	confirmStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("11")).
+			Bold(true)
 )
 
 func (m Model) View() string {
@@ -220,8 +259,13 @@ func (m Model) View() string {
 		editW = m.width / 2
 	}
 
+	if m.confirmQuit {
+		prompt := confirmStyle.Render("Unsaved changes. Quit without saving? (y/n)")
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, prompt)
+	}
+
 	if m.showHelp {
-		help := helpStyle.Render(strings.Join([]string{
+		help := editorHelpStyle.Render(strings.Join([]string{
 			"Editor Help",
 			"",
 			"  Arrow keys   Move cursor",
@@ -259,7 +303,10 @@ func (m Model) View() string {
 	editorPane := strings.Join(editorLines, "\n")
 
 	previewW := m.width - editW - 1
-	rendered, _ := markdown.Render(m.buffer.String())
+	rendered, renderErr := markdown.Render(m.buffer.String())
+	if renderErr != nil {
+		rendered = errStyle.Render("Preview error: " + renderErr.Error())
+	}
 	previewLines := strings.Split(rendered, "\n")
 	if len(previewLines) > editHeight {
 		previewLines = previewLines[:editHeight]
@@ -278,8 +325,15 @@ func (m Model) View() string {
 	if m.buffer.Modified() {
 		modIndicator = " [+]"
 	}
-	status := statusStyle.Render(fmt.Sprintf(" %s%s  Ln %d, Col %d  Ctrl+S: save  Ctrl+H: help  Ctrl+C: quit",
-		m.filePath, modIndicator, m.cursorRow+1, m.cursorCol+1))
+	statusText := fmt.Sprintf(" %s%s  Ln %d, Col %d  Ctrl+S: save  Ctrl+H: help  Ctrl+C: quit",
+		m.filePath, modIndicator, m.cursorRow+1, m.cursorCol+1)
+	if m.err != nil {
+		statusText += "  " + errStyle.Render("Error: "+m.err.Error())
+	}
+	if m.saveMsg != "" {
+		statusText += "  " + savedStyle.Render(m.saveMsg)
+	}
+	status := statusStyle.Render(statusText)
 
 	return body + "\n" + status
 }
