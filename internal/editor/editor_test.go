@@ -116,9 +116,76 @@ func TestEditorModel_SaveError_DisplayedInView(t *testing.T) {
 	if model.err == nil {
 		t.Fatal("expected save error for invalid path")
 	}
-
 	view := model.View()
 	if !strings.Contains(view, "Error:") {
 		t.Fatal("expected error message in view output")
+	}
+}
+
+func TestEditorModel_QuitConfirmation_Modified(t *testing.T) {
+	m := NewModel("hello", "/tmp/test.md")
+	m.width = 80
+	m.height = 24
+
+	// Type to set modified
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}})
+	model := updated.(Model)
+
+	// Press Ctrl+C — should NOT quit, should show confirmation
+	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	model = updated.(Model)
+	if cmd != nil {
+		t.Fatal("should not quit immediately with unsaved changes")
+	}
+	if !model.confirmQuit {
+		t.Fatal("expected confirmQuit to be true")
+	}
+
+	// View should show the confirmation prompt
+	view := model.View()
+	if !strings.Contains(view, "Unsaved changes") {
+		t.Fatal("expected confirmation prompt in view")
+	}
+
+	// Press 'n' to cancel
+	updated, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	model = updated.(Model)
+	if cmd != nil {
+		t.Fatal("pressing 'n' should not quit")
+	}
+	if model.confirmQuit {
+		t.Fatal("confirmQuit should be false after 'n'")
+	}
+}
+
+func TestEditorModel_QuitConfirmation_Accept(t *testing.T) {
+	m := NewModel("hello", "/tmp/test.md")
+	m.width = 80
+	m.height = 24
+
+	// Type to set modified
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}})
+	model := updated.(Model)
+
+	// Press Ctrl+C
+	updated, _ = model.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	model = updated.(Model)
+
+	// Press 'y' to confirm quit
+	_, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	if cmd == nil {
+		t.Fatal("pressing 'y' should quit")
+	}
+}
+
+func TestEditorModel_QuitUnmodified(t *testing.T) {
+	m := NewModel("hello", "/tmp/test.md")
+	m.width = 80
+	m.height = 24
+
+	// Press Ctrl+C on unmodified buffer — should quit immediately
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	if cmd == nil {
+		t.Fatal("should quit immediately when no unsaved changes")
 	}
 }

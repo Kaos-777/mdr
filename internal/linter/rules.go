@@ -126,6 +126,61 @@ func extractText(n ast.Node, source []byte) string {
 	return buf.String()
 }
 
+func checkTrailingWhitespace(source []byte) []Issue {
+	var issues []Issue
+	lines := bytes.Split(source, []byte("\n"))
+	for i, line := range lines {
+		trimmed := bytes.TrimRight(line, " \t")
+		if len(trimmed) < len(line) {
+			issues = append(issues, Issue{
+				Rule:     "trailing-whitespace",
+				Message:  "line has trailing whitespace",
+				Line:     i + 1,
+				Severity: SeverityWarning,
+			})
+		}
+	}
+	return issues
+}
+
+func checkEmptySections(source []byte) []Issue {
+	doc := parseAST(source)
+	var issues []Issue
+	var prevHeading *ast.Heading
+	var prevLine int
+
+	ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+		if heading, ok := n.(*ast.Heading); ok {
+			if prevHeading != nil && prevHeading.NextSibling() == heading {
+				issues = append(issues, Issue{
+					Rule:     "no-empty-sections",
+					Message:  fmt.Sprintf("empty section under %q", extractText(prevHeading, source)),
+					Line:     prevLine,
+					Severity: SeverityWarning,
+				})
+			}
+			prevHeading = heading
+			prevLine = lineNumber(source, n)
+		}
+		return ast.WalkContinue, nil
+	})
+
+	// Flag a heading at the end of the document with no content after it
+	if prevHeading != nil && prevHeading.NextSibling() == nil {
+		issues = append(issues, Issue{
+			Rule:     "no-empty-sections",
+			Message:  fmt.Sprintf("empty section under %q", extractText(prevHeading, source)),
+			Line:     prevLine,
+			Severity: SeverityWarning,
+		})
+	}
+
+	return issues
+}
+
 func lineNumber(source []byte, n ast.Node) int {
 	// Only block nodes support Lines(); inline nodes panic
 	if n.Type() == ast.TypeBlock {

@@ -1,6 +1,7 @@
 package linter
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -40,9 +41,20 @@ func TestLintFile_NotFound(t *testing.T) {
 }
 
 func TestLint_CleanFile(t *testing.T) {
-	input := []byte("# Title\n\n## Subtitle\n\n[Link](https://example.com)\n")
+	input := []byte("# Title\n\nSome intro text.\n\n## Subtitle\n\n[Link](https://example.com)\n")
 	issues := Lint(input)
 	if len(issues) != 0 {
-		t.Fatalf("expected no issues for clean file, got %d", len(issues))
+		t.Fatalf("expected no issues for clean file, got %d: %v", len(issues), issues)
+	}
+}
+
+func TestLintReader(t *testing.T) {
+	r := strings.NewReader("# Title\n\n### Skip\n")
+	issues, err := LintReader(r)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(issues) == 0 {
+		t.Fatal("expected issues from reader input")
 	}
 }

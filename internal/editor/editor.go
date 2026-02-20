@@ -12,18 +12,19 @@ import (
 )
 
 type Model struct {
-	buffer    *Buffer
-	filePath  string
-	fileMode  fs.FileMode
-	cursorRow int
-	cursorCol int
-	offsetRow int
-	width     int
-	height    int
-	editWidth int
-	showHelp  bool
-	err       error
-	saveMsg   string
+	buffer      *Buffer
+	filePath    string
+	fileMode    fs.FileMode
+	cursorRow   int
+	cursorCol   int
+	offsetRow   int
+	width       int
+	height      int
+	editWidth   int
+	showHelp    bool
+	confirmQuit bool
+	err         error
+	saveMsg     string
 }
 
 func NewModel(content string, filePath string) Model {
@@ -61,6 +62,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
+		// Handle quit confirmation dialog
+		if m.confirmQuit {
+			switch msg.String() {
+			case "y", "Y":
+				return m, tea.Quit
+			case "n", "N", "esc":
+				m.confirmQuit = false
+				return m, nil
+			default:
+				return m, nil
+			}
+		}
+
 		// Clear transient messages on any non-save keypress
 		if msg.Type != tea.KeyCtrlS {
 			m.err = nil
@@ -69,6 +83,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.Type {
 		case tea.KeyCtrlC:
+			if m.buffer.Modified() {
+				m.confirmQuit = true
+				return m, nil
+			}
 			return m, tea.Quit
 
 		case tea.KeyCtrlS:
@@ -218,13 +236,16 @@ var (
 			BorderLeft(true).
 			BorderStyle(lipgloss.NormalBorder()).
 			BorderForeground(lipgloss.Color("241"))
-	helpStyle = lipgloss.NewStyle().
+	editorHelpStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("241"))
 	errStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("9")).
 			Bold(true)
 	savedStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("10"))
+	confirmStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("11")).
+			Bold(true)
 )
 
 func (m Model) View() string {
@@ -238,8 +259,13 @@ func (m Model) View() string {
 		editW = m.width / 2
 	}
 
+	if m.confirmQuit {
+		prompt := confirmStyle.Render("Unsaved changes. Quit without saving? (y/n)")
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, prompt)
+	}
+
 	if m.showHelp {
-		help := helpStyle.Render(strings.Join([]string{
+		help := editorHelpStyle.Render(strings.Join([]string{
 			"Editor Help",
 			"",
 			"  Arrow keys   Move cursor",
